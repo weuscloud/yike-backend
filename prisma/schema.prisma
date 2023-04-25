@@ -1,0 +1,52 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// User 表
+model User {
+  id            Int       @id @default(autoincrement())
+  name          String    @unique
+  phone_number  String?   @unique
+  email         String?   @unique
+  national_id   String?
+  password_hash String
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  Post          Post[]
+  Comment       Comment[]
+}
+
+// Post 表
+model Post {
+  id         Int       @id @default(autoincrement())
+  user_id    Int
+  title      String
+  content    String
+  views      Int       @default(0)
+  likes      Int       @default(0)
+  shares     Int       @default(0)
+  video      String?
+  image      String?
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  user       User      @relation(fields: [user_id], references: [id])
+  Comment    Comment[]
+}
+
+// Comment 表
+model Comment {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  post_id    Int
+  content    String
+  image      String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  user       User     @relation(fields: [user_id], references: [id])
+  post       Post     @relation(fields: [post_id], references: [id])
+}
