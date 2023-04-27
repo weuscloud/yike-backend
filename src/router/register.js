@@ -6,7 +6,7 @@ const { JWT_SECRET } = process.env;
 
 // 用户注册
 router.post('/', async (req, res) => {
-  const { phoneorEmail, passwordHash } = req.body;
+  const { phoneorEmail, password } = req.body;
 
   try {
     // Check if the phone number or email is already registered
@@ -26,7 +26,7 @@ router.post('/', async (req, res) => {
     // Create a new user record
     const newUser = await prisma.user.create({
       data: {
-        password_hash: passwordHash,
+        password_hash: password,
         email: phoneorEmail,
       },
     });
@@ -37,7 +37,6 @@ router.post('/', async (req, res) => {
       JWT_SECRET,
       { expiresIn: '1d' }
     );
-    res.set('Authorization', `Bearer ${token}`);
     // Return token to the user
     return res.status(201).json({ token });
   } catch (error) {
