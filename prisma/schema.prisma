@@ -7,46 +7,52 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// User 表
+// 定义用户表
 model User {
+  id           Int       @id @default(autoincrement())
+  name         String    @unique
+  email        String?   
+  phone        String?   
+  avatarUrl    String?
+  passwordHash String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime? @updatedAt
+  // 用户可以创建多篇文章，使用一个关系字段来关联文章表
+  articles     Article[]
+  // 一个用户可以创建多条评论，使用一个关系字段来关联评论表
+  comments     Comment[]
+}
+
+// 定义文章表
+model Article {
   id            Int       @id @default(autoincrement())
-  name          String    @unique
-  phone_number  String?   @unique
-  email         String?   @unique
-  national_id   String?
-  password_hash String
-  created_at    DateTime  @default(now())
-  updated_at    DateTime  @updatedAt
-  Post          Post[]
-  Comment       Comment[]
+  title         String
+  description      String?
+  content       String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime? @updatedAt
+  // 文章属于一个用户，使用外键来关联用户表
+  author        User      @relation(fields: [authorId], references: [id])
+  authorId      Int
+  // 点赞数、分享数、收藏数和评论数字段
+  likes         Int       @default(0)
+  shares        Int       @default(0)
+  favorites     Int       @default(0)
+  commentsCount Int       @default(0)
+  // 一篇文章可以有多条评论，使用一个关系字段来关联评论表
+  comments      Comment[]
 }
 
-// Post 表
-model Post {
-  id         Int       @id @default(autoincrement())
-  user_id    Int
-  title      String
-  content    String
-  views      Int       @default(0)
-  likes      Int       @default(0)
-  shares     Int       @default(0)
-  video      String?
-  image      String?
-  created_at DateTime  @default(now())
-  updated_at DateTime  @updatedAt
-  user       User      @relation(fields: [user_id], references: [id])
-  Comment    Comment[]
-}
-
-// Comment 表
+// 定义评论表
 model Comment {
-  id         Int      @id @default(autoincrement())
-  user_id    Int
-  post_id    Int
-  content    String
-  image      String?
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-  user       User     @relation(fields: [user_id], references: [id])
-  post       Post     @relation(fields: [post_id], references: [id])
+  id        Int       @id @default(autoincrement())
+  content   String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
+  // 评论属于一篇文章，使用外键来关联文章表
+  article   Article   @relation(fields: [articleId], references: [id])
+  articleId Int
+  // 评论是一个用户创建的，使用外键来关联用户表
+  author    User      @relation(fields: [authorId], references: [id])
+  authorId  Int
 }

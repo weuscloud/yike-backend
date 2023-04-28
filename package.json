@@ -1,11 +1,11 @@
 {
   "name": "yike-backend",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "",
   "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start":"node ./src/app"
+    "start": "node ./src/app"
   },
   "keywords": [],
   "author": "",
@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@prisma/client": "^4.13.0",
+    "cors": "^2.8.5",
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
     "jsonwebtoken": "^9.0.0"
