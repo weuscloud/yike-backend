@@ -35,6 +35,7 @@ model Article {
   author        User      @relation(fields: [authorId], references: [id])
   authorId      Int
   // 点赞数、分享数、收藏数和评论数字段
+  views         Int       @default(0)
   likes         Int       @default(0)
   shares        Int       @default(0)
   favorites     Int       @default(0)
