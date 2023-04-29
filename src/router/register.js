@@ -43,7 +43,8 @@ router.post('/', async (req, res) => {
           avatarUrl: newUser.avatarUrl,
           id: newUser.id
         },
-        ip:""
+        ip:"",
+        unixTimestamp: Math.floor(Date.now() / 1000)
       },
       JWT_SECRET,
       { expiresIn: '1d' }
