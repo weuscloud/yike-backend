@@ -1,11 +1,14 @@
 #!/bin/bash
 
 version=$(cat package.json | grep -m1 version | awk -F: '{print $2}' | sed 's/[", ]//g')
+
 # 读取版本号
 major=$(echo $version | cut -d. -f1)
 minor=$(echo $version | cut -d. -f2)
 patch=$(echo $version | cut -d. -f3)
 branch_name=$(git symbolic-ref --short HEAD)
+
+
 # 提交更新到Git
 if git diff-index --quiet HEAD --; then
   echo "没有需要提交的更改"

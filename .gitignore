@@ -3,3 +3,5 @@ node_modules
 .env
 migrations
 package-lock.json
+*.sh
+replace-rn.js
