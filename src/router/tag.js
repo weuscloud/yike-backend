@@ -73,25 +73,7 @@ router.put('/:id', async (req, res) => {
     res.status(500).json({ message: '服务器出错' });
   }
 });
-// 初始化标签
-router.get('/init', async (req, res) => {
-  try {
-    const tags = await prisma.tag.createMany({
-      data: [
-        { name: 'react' },
-        { name: 'antd' },
-        { name: 'axios' },
-        { name: 'redux' },
-        { name: 'JavaScript' },
-      ],
-      skipDuplicates: true,
-    });
-    res.json({ message: '初始化成功' });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: '服务器出错' });
-  }
-});
+
 // 删除所有标签
 router.delete('/all', async (req, res) => {
   try {
@@ -112,6 +94,25 @@ router.delete('/:id', async (req, res) => {
     }
     await prisma.tag.delete({ where: { id: parseInt(id) } });
     res.json({ message: '删除成功' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: '服务器出错' });
+  }
+});
+// 初始化标签
+router.get('/init', async (req, res) => {
+  try {
+    const tags = await prisma.tag.createMany({
+      data: [
+        { name: 'react' },
+        { name: 'antd' },
+        { name: 'axios' },
+        { name: 'redux' },
+        { name: 'JavaScript' },
+      ],
+      skipDuplicates: true,
+    });
+    res.json({ message: '初始化成功' });
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: '服务器出错' });

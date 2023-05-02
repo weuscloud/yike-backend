@@ -5,7 +5,43 @@ const prisma = require('../../prisma/prisma');
 router.get('/all', async (req, res) => {
   try {
     const articles = await prisma.article.findMany({
+      include: {
+        author: true,
+        tags: true,
+      },
     });
+    if (!articles) {
+      return res.status(404).json({ message: 'Article not found' });
+    }
+    res.status(200).json(articles);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send('Internal server error');
+  }
+});
+//get 5 popular articles
+router.get('/pop', async (req, res) => {
+  try {
+    const articles = await prisma.article.findMany({
+      take: 5,
+      orderBy: { id: 'asc' },
+    });
+
+    const lastModified = articles.reduce((prev, curr) => {
+      const updatedAt = new Date(curr.updatedAt).getTime();
+      return prev > updatedAt ? prev : updatedAt;
+    }, new Date(0).getTime());
+
+    const ifModifiedSince = req.headers['if-modified-since'];
+
+    if (ifModifiedSince && new Date(ifModifiedSince).getTime() >= lastModified) {
+      res.status(304).end();
+      return;
+    }
+
+    const cacheControl = `max-age=${60 * 60 * 24 * 1}`; // 设置缓存1天
+    res.setHeader('Cache-Control', cacheControl);
+    res.setHeader('Last-Modified', new Date(lastModified).toUTCString());
     res.status(200).json(articles);
   } catch (error) {
     console.error(error);
@@ -16,15 +52,13 @@ router.get('/all', async (req, res) => {
 // 获取文章详情
 router.get('/:id', async (req, res) => {
   const id = parseInt(req.params.id);
+  if(typeof id !=='number')
+  return res.status(404).json({ message: 'Article not found' });
   try {
     const article = await prisma.article.findUnique({
       where: {
         id: id,
-      },
-      include: {
-        author: true,
-        tags: true,
-      },
+      }
     });
     if (!article) {
       return res.status(404).json({ message: 'Article not found' });
@@ -37,25 +71,23 @@ router.get('/:id', async (req, res) => {
 });
 
 // 创建文章
-router.post('/:time', async (req, res) => {
-  const { title, description, content, authorId, tags } = req.body;
-  if (!title || !content || !authorId) {
+router.post('/', async (req, res) => {
+  const { title, description, content, avatarUrl,authorId, tags } = req.body;
+  console.log(req.body)
+  if (!title || !content || !description||!authorId) {
     return res.status(400).json({ message: 'Incomplete data' });
   }
   try {
     const article = await prisma.article.create({
       data: {
-        title: title,
-        description: description,
-        content: content,
-        authorId: authorId,
-      },
-      include: {
-        author: true,
-        tags: true,
-      },
+        title,
+        description,
+        content,
+        avatarUrl,
+        authorId: parseInt(authorId),
+      }
     });
-    res.status(201).json(article);
+    res.status(200).json(article.id);
   } catch (error) {
     console.error(error);
     res.status(500).send('Internal server error');
@@ -116,7 +148,7 @@ router.delete('/:articleId/tags/:tagId', async (req, res) => {
 // 更新文章
 router.put('/:id', async (req, res) => {
   const id = parseInt(req.params.id);
-  const { title, description, content, published, tags } = req.body;
+  const { title, description, content, published } = req.body;
   try {
     const article = await prisma.article.update({
       where: {
@@ -127,17 +159,7 @@ router.put('/:id', async (req, res) => {
         description: description,
         content: content,
         published: published,
-        tags: {
-          connectOrCreate: tags.map((tag) => ({
-            where: { name: tag },
-            create: { name: tag },
-          })),
-        },
-      },
-      include: {
-        author: true,
-        tags: true,
-      },
+      }
     });
     res.status(200).json(article);
   } catch (error) {
@@ -164,14 +186,12 @@ router.delete('/:id', async (req, res) => {
 
 // 初始化创建一篇文章
 router.get('/init', async (req, res) => {
-    const { title, description, content, authorId } = req.body;
-  
     try {
       const article = await prisma.article.create({
         data: {
-          title: title,
-          description: description,
-          content: content,
+          title: "My first blog",
+          description: "it is first blog.",
+          content: "<h2>hello world!</h2>",
           authorId: 1,
           published: true,
         },

@@ -90,7 +90,7 @@ router.delete('/:id', async (req, res) => {
     res.status(500).send('Internal server error');
   }
 });
-router.get('init',async(req,res)=>{
+router.get('/init',async(req,res)=>{
   const newUser = await prisma.user.create({
     data: {
       "name": "Administrator",

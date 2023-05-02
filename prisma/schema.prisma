@@ -29,6 +29,7 @@ model Article {
   title         String
   description   String?
   content       String
+  avatarUrl     String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime? @updatedAt
   // 文章属于一个用户，使用外键来关联用户表
