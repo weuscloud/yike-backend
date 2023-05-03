@@ -41,13 +41,14 @@ router.post('/', async (req, res) => {
         user: {
           name: newUser.name,
           avatarUrl: newUser.avatarUrl,
-          id: newUser.id
+          id: newUser.id,
+          updatedAt:user.updatedAt
         },
         ip:"",
         unixTimestamp: Math.floor(Date.now() / 1000)
       },
       JWT_SECRET,
-      { expiresIn: '1d' }
+      { expiresIn: '7d' }
     );
     // Return token to the user
     return res.status(200).json({ token });

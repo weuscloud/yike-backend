@@ -9,12 +9,12 @@ function requireAuth(req, res, next) {
     return res.sendStatus(401); // 未提供 token
   }
 
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
+  jwt.verify(token, process.env.JWT_SECRET, (err, token) => {
     if (err) {
       return res.sendStatus(403); // token 不合法或已过期
     }
 
-    req.user = user;
+    req.token = token;
     next(); // 通过认证，继续执行路由处理程序
   });
 }

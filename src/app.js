@@ -28,8 +28,15 @@ app.use(cors(corsOptions));
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }));
 
+let requestsCount = 0;
+
+setInterval(() => {
+  console.log(`\u001b[32mAverage requests per minute: ${requestsCount/60}\u001b[0m`)
+  requestsCount = 0;
+}, 60000);
 // 中间件函数，记录请求地址并输出到控制台
 const logRequests = (req, res, next) => {
+  requestsCount++;
   console.log(`Received a ${req.method} request for ${req.url}`);
   next();
 };

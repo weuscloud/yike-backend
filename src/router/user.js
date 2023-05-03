@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const prisma = require('../../prisma/prisma');
+const auth=require('../middleware/requireAuth');
+
+
 
 // 用户列表
 router.get('/all', async (req, res) => {
@@ -26,11 +29,10 @@ router.get('/:id', async (req, res) => {
       return res.status(404).send(`User with ID ${id} not found`);
     }
     res.status(200).json({
-      user: {
         name: user.name,
         avatarUrl: user.avatarUrl,
         id: user.id,
-      },
+        updatedAt:user.updatedAt
     });
   } catch (error) {
     console.error(error);
@@ -65,8 +67,6 @@ router.put('/:id', async (req, res) => {
     res.status(500).send('Internal server error');
   }
 });
-
-
 // 删除用户
 router.delete('/:id', async (req, res) => {
   const id = parseInt(req.params.id);

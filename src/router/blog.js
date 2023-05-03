@@ -1,6 +1,30 @@
 const express = require('express');
 const router = express.Router();
 const prisma = require('../../prisma/prisma');
+const auth = require('../middleware/requireAuth');
+
+//get all articles 
+router.get('/', auth, async (req, res) => {
+  const userId = parseInt(req.token.user.id);
+
+  try {
+    const articles = await prisma.article.findMany({
+      where: { authorId: userId },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!articles) {
+      res.status(404).json({ error: 'Article not found' });
+      return;
+    }
+    res.json(articles);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+})
 // 获取文章列表
 router.get('/all', async (req, res) => {
   try {
@@ -25,23 +49,10 @@ router.get('/pop', async (req, res) => {
     const articles = await prisma.article.findMany({
       take: 5,
       orderBy: { id: 'asc' },
+      select: {
+        id: true,
+      },
     });
-
-    const lastModified = articles.reduce((prev, curr) => {
-      const updatedAt = new Date(curr.updatedAt).getTime();
-      return prev > updatedAt ? prev : updatedAt;
-    }, new Date(0).getTime());
-
-    const ifModifiedSince = req.headers['if-modified-since'];
-
-    if (ifModifiedSince && new Date(ifModifiedSince).getTime() >= lastModified) {
-      res.status(304).end();
-      return;
-    }
-
-    const cacheControl = `max-age=${60 * 60 * 24 * 1}`; // 设置缓存1天
-    res.setHeader('Cache-Control', cacheControl);
-    res.setHeader('Last-Modified', new Date(lastModified).toUTCString());
     res.status(200).json(articles);
   } catch (error) {
     console.error(error);
@@ -52,17 +63,53 @@ router.get('/pop', async (req, res) => {
 // 获取文章详情
 router.get('/:id', async (req, res) => {
   const id = parseInt(req.params.id);
-  if(typeof id !=='number')
-  return res.status(404).json({ message: 'Article not found' });
+  if (typeof id !== 'number')
+    return res.status(404).json({ message: 'Article not found' });
+
+  !req.query.q ? req.query.q = '' : undefined;
   try {
-    const article = await prisma.article.findUnique({
+    // 将请求参数中的需要的字段列表解析为数组
+    const fields = req.query.q.split(',');
+
+    const viewed = ['title', 'description', 'content'].every(field => fields.includes(field));
+
+    const select = {
+      id: true,
+      views: true,
+      avatarUrl:fields.includes('avatarUrl'),
+      title: fields.includes('title'),
+      content: fields.includes('content'),
+      description: fields.includes('description'),
+      authorId:true,
+      likes: fields.includes('likes'),
+      shares: fields.includes('shares'),
+      favorites: fields.includes('favorites'),
+      commentsCount: fields.includes('commentsCount'),
+      createdAt: fields.includes('createdAt'),
+      updatedAt: fields.includes('updatedAt'),
+      tags: fields.includes('tags'),
+    };
+    let article = await prisma.article.findUnique({
       where: {
-        id: id,
-      }
-    });
+        id
+      },
+      select
+    }) 
+  
+    article = viewed?await prisma.article.update({
+      where: {
+        id
+      },
+      select,
+      data: {
+        views: article.views + 1,
+      },
+    }):article;
+
     if (!article) {
       return res.status(404).json({ message: 'Article not found' });
     }
+
     res.status(200).json(article);
   } catch (error) {
     console.error(error);
@@ -70,24 +117,31 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+
 // 创建文章
-router.post('/', async (req, res) => {
-  const { title, description, content, avatarUrl,authorId, tags } = req.body;
-  console.log(req.body)
-  if (!title || !content || !description||!authorId) {
+router.post('/', auth, async (req, res) => {
+  const { title, description, content, avatarUrl, tags } = req.body;
+  if (!title || !content || !description) {
     return res.status(400).json({ message: 'Incomplete data' });
   }
+
+  const authorId = parseInt(req.token.user.id);
   try {
+    // Check if the author with the given ID exists
+    const author = await prisma.user.findUnique({ where: { id: authorId } });
+    if (!author) {
+      return res.status(404).json({ message: 'Author not found' });
+    }// Create the article
     const article = await prisma.article.create({
       data: {
         title,
         description,
         content,
         avatarUrl,
-        authorId: parseInt(authorId),
+        authorId: authorId,
       }
     });
-    res.status(200).json(article.id);
+    res.status(200).json({ id: article.id });
   } catch (error) {
     console.error(error);
     res.status(500).send('Internal server error');
@@ -125,7 +179,7 @@ router.put('/:articleId/tags/:tagId', async (req, res) => {
 //取消文章与tag的连接
 router.delete('/:articleId/tags/:tagId', async (req, res) => {
   const { articleId, tagId } = req.params;
-  
+
   try {
     const article = await prisma.article.update({
       where: { id: parseInt(articleId) },
@@ -137,7 +191,7 @@ router.delete('/:articleId/tags/:tagId', async (req, res) => {
         },
       },
     });
-    
+
     res.status(200).json(article);
   } catch (error) {
     console.error(error);
@@ -146,22 +200,28 @@ router.delete('/:articleId/tags/:tagId', async (req, res) => {
 });
 
 // 更新文章
-router.put('/:id', async (req, res) => {
+router.put('/:id', auth, async (req, res) => {
+  const { title, description, content, tags } = req.body;
+  const { id: userId } = req.token.user;
   const id = parseInt(req.params.id);
-  const { title, description, content, published } = req.body;
   try {
-    const article = await prisma.article.update({
-      where: {
-        id: id,
-      },
-      data: {
-        title: title,
-        description: description,
-        content: content,
-        published: published,
+    const article = await prisma.article.findUnique({ 
+      where: { id } ,
+      select:{
+        authorId:true
       }
     });
-    res.status(200).json(article);
+    if (!article) {
+      return res.status(404).send('Article not found');
+    }
+    if (article.authorId !== parseInt(userId)) {
+      return res.status(401).send('Unauthorized');
+    }
+    const updatedArticle = await prisma.article.update({
+      where: { id },
+      data: { title, description, content },
+    });
+    res.status(200).json(updatedArticle);
   } catch (error) {
     console.error(error);
     res.status(500).send('Internal server error');
@@ -186,20 +246,20 @@ router.delete('/:id', async (req, res) => {
 
 // 初始化创建一篇文章
 router.get('/init', async (req, res) => {
-    try {
-      const article = await prisma.article.create({
-        data: {
-          title: "My first blog",
-          description: "it is first blog.",
-          content: "<h2>hello world!</h2>",
-          authorId: 1,
-          published: true,
-        },
-      });
-      res.status(200).json(article);
-    } catch (error) {
-      console.error(error);
-      res.status(500).send('Internal server error');
-    }
-  });
+  try {
+    const article = await prisma.article.create({
+      data: {
+        title: "My first blog",
+        description: "it is first blog.",
+        content: "<h2>hello world!</h2>",
+        authorId: 1,
+        published: true,
+      },
+    });
+    res.status(200).json(article);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send('Internal server error');
+  }
+});
 module.exports = router;
