@@ -11,16 +11,23 @@ app.use(function(req, res, next) {
   next();
 });
 
+const allowedOrigins = ['localhost', '192.168.1.100'];
 
 const corsOptions = {
-  origin: function (origin, callback) {
-    if (!origin || origin.includes('localhost')) {
+  origin: (origin, callback) => {
+    if (!origin) {
+      // 如果请求没有 Origin 头，则默认允许
+      callback(null, true);
+    } else if (allowedOrigins.some(domain => origin.includes(domain))) {
+      // 如果请求的 Origin 头在允许的地址列表中，则允许
       callback(null, true);
     } else {
+      // 否则不允许
       callback(new Error('Not allowed by CORS'));
     }
   }
 };
+
 app.use(cors(corsOptions));
 
 
