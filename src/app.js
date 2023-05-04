@@ -11,7 +11,7 @@ app.use(function(req, res, next) {
   next();
 });
 
-const allowedOrigins = ['localhost', '192.168.1.100'];
+const allowedOrigins = process.env.CORS.split(',');
 
 const corsOptions = {
   origin: (origin, callback) => {
