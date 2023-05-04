@@ -15,6 +15,7 @@ model User {
   phone        String?
   avatarUrl    String?
   passwordHash String
+  bio          String?
   createdAt    DateTime  @default(now())
   updatedAt    DateTime? @updatedAt
   // 用户可以创建多篇文章，使用一个关系字段来关联文章表
@@ -28,7 +29,7 @@ model Article {
   id            Int       @id @default(autoincrement())
   title         String
   description   String?
-  content       String
+  content       String    @db.VarChar(10000)
   avatarUrl     String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime? @updatedAt
@@ -41,7 +42,7 @@ model Article {
   shares        Int       @default(0)
   favorites     Int       @default(0)
   commentsCount Int       @default(0)
-  published     Boolean  @default(false)
+  published     Boolean   @default(false)
   // 一篇文章可以有多条评论，使用一个关系字段来关联评论表
   comments      Comment[]
   tags          Tag[] // 一篇文章可以有多个标签，使用一个关系字段来关联标签表
@@ -51,6 +52,7 @@ model Tag {
   id       Int       @id @default(autoincrement())
   name     String    @unique
   articles Article[] // 一篇文章可以有多个标签，使用一个关系字段来关联文章表
+
   @@map(name: "tags")
 }
 

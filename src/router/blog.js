@@ -59,7 +59,26 @@ router.get('/pop', async (req, res) => {
     res.status(500).send('Internal server error');
   }
 });
+//id
+router.get('/tags/:tagId', async (req, res) => {
+  const { tagId } = req.params;
 
+  const articles = await prisma.article.findMany({
+    where: {
+      tags: {
+        some: {
+          id: parseInt(tagId),
+        },
+      },
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  const articleIds = articles.map(article => ({ id: article.id }));
+  res.json(articleIds);
+});
 // 获取文章详情
 router.get('/:id', async (req, res) => {
   const id = parseInt(req.params.id);
@@ -67,20 +86,22 @@ router.get('/:id', async (req, res) => {
     return res.status(404).json({ message: 'Article not found' });
 
   !req.query.q ? req.query.q = '' : undefined;
+
   try {
     // 将请求参数中的需要的字段列表解析为数组
     const fields = req.query.q.split(',');
-
-    const viewed = ['title', 'description', 'content'].every(field => fields.includes(field));
+    
+    const viewed=fields.includes('viewed')?true:false;
+    // const viewed = ['content'].every(field => fields.includes(field));
 
     const select = {
       id: true,
       views: true,
-      avatarUrl:fields.includes('avatarUrl'),
+      avatarUrl: fields.includes('avatarUrl'),
       title: fields.includes('title'),
       content: fields.includes('content'),
       description: fields.includes('description'),
-      authorId:true,
+      authorId: true,
       likes: fields.includes('likes'),
       shares: fields.includes('shares'),
       favorites: fields.includes('favorites'),
@@ -94,9 +115,9 @@ router.get('/:id', async (req, res) => {
         id
       },
       select
-    }) 
-  
-    article = viewed?await prisma.article.update({
+    })
+
+    article = viewed ? await prisma.article.update({
       where: {
         id
       },
@@ -104,7 +125,7 @@ router.get('/:id', async (req, res) => {
       data: {
         views: article.views + 1,
       },
-    }):article;
+    }) : article;
 
     if (!article) {
       return res.status(404).json({ message: 'Article not found' });
@@ -121,94 +142,99 @@ router.get('/:id', async (req, res) => {
 // 创建文章
 router.post('/', auth, async (req, res) => {
   const { title, description, content, avatarUrl, tags } = req.body;
-  if (!title || !content || !description) {
-    return res.status(400).json({ message: 'Incomplete data' });
+
+  // 查询tagIds对应的tag对象是否存在
+  const tagIds = tags.map(tag => tag.id);
+  const foundTags = await prisma.tag.findMany({
+    where: {
+      id: { in: tagIds },
+    },
+  });
+  const foundTagIds = foundTags.map(tag => tag.id);
+
+  // 筛选出不存在的tagId
+  const notFoundTagIds = tagIds.filter(tagId => !foundTagIds.includes(tagId));
+
+  // 如果存在不存在的tagId，则抛出错误
+  if (notFoundTagIds.length > 0) {
+    return res.status(400).json({ error: `Tag(s) with id ${notFoundTagIds.join(', ')} not found` });
   }
 
-  const authorId = parseInt(req.token.user.id);
   try {
-    // Check if the author with the given ID exists
-    const author = await prisma.user.findUnique({ where: { id: authorId } });
-    if (!author) {
-      return res.status(404).json({ message: 'Author not found' });
-    }// Create the article
-    const article = await prisma.article.create({
+    // 创建文章并关联标签
+    const newArticle = await prisma.article.create({
       data: {
         title,
         description,
         content,
         avatarUrl,
-        authorId: authorId,
-      }
-    });
-    res.status(200).json({ id: article.id });
-  } catch (error) {
-    console.error(error);
-    res.status(500).send('Internal server error');
-  }
-});
-//文章添加tag
-router.put('/:articleId/tags/:tagId', async (req, res) => {
-  const { articleId, tagId } = req.params;
-
-  try {
-    const tag = await prisma.tag.findUnique({
-      where: { id: parseInt(tagId) },
-    });
-    if (!tag) {
-      return res.status(404).json({ message: 'Tag not found' });
-    }
-
-    const article = await prisma.article.update({
-      where: { id: parseInt(articleId) },
-      data: {
+        author: {
+          connect: { id: req.token.user.id },
+        },
         tags: {
-          connect: {
-            id: parseInt(tagId),
-          },
+          connect: tags.map(tag => ({ id: tag.id })),
         },
       },
     });
 
-    res.status(200).json(article);
+    return res.status(201).json(newArticle);
   } catch (error) {
-    console.error(error);
-    res.status(500).send('Internal server error');
+    return res.status(500).json({ error: 'Failed to create article' });
   }
 });
-//取消文章与tag的连接
-router.delete('/:articleId/tags/:tagId', async (req, res) => {
-  const { articleId, tagId } = req.params;
 
-  try {
-    const article = await prisma.article.update({
-      where: { id: parseInt(articleId) },
-      data: {
-        tags: {
-          disconnect: {
-            id: parseInt(tagId),
-          },
-        },
-      },
-    });
 
-    res.status(200).json(article);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Failed to disconnect tag from article' });
-  }
-});
 
 // 更新文章
 router.put('/:id', auth, async (req, res) => {
-  const { title, description, content, tags } = req.body;
+  const { title, description, content, avatarUrl, tags } = req.body;
+  const { id: articleId } = req.params;
+  try {
+    const article = await prisma.article.findUnique({
+      where: { id: parseInt(articleId) },
+      include: { tags: true },
+    });
+
+    if (!article) {
+      return res.status(404).json({ msg: 'Article not found' });
+    }
+
+    const existingTagIds = article.tags.map(tag => tag.id);
+    const disconnectTags = article.tags.filter(tag => !tags.some(t => t.id === tag.id));
+    const newTags = tags.filter(tag => !existingTagIds.some(t => t === tag.id))
+
+    await prisma.article.update({
+      where: { id: parseInt(articleId) },
+      data: {
+        title,
+        description,
+        content,
+        avatarUrl,
+        tags: {
+          connect: newTags.map(tag => ({ id: tag.id })),
+          disconnect: disconnectTags.map(tag => ({ id: tag.id })),
+        },
+        published: true,
+      },
+    });
+
+    res.status(201).json({id:articleId });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ msg: 'Server error' });
+  }
+});
+// 删除文章
+router.delete('/:id', auth, async (req, res) => {
   const { id: userId } = req.token.user;
   const id = parseInt(req.params.id);
   try {
-    const article = await prisma.article.findUnique({ 
-      where: { id } ,
-      select:{
-        authorId:true
+    const article = await prisma.article.findUnique({
+      where: {
+        id: id,
+      },
+      select: {
+        authorId: true
       }
     });
     if (!article) {
@@ -217,27 +243,12 @@ router.put('/:id', auth, async (req, res) => {
     if (article.authorId !== parseInt(userId)) {
       return res.status(401).send('Unauthorized');
     }
-    const updatedArticle = await prisma.article.update({
-      where: { id },
-      data: { title, description, content },
-    });
-    res.status(200).json(updatedArticle);
-  } catch (error) {
-    console.error(error);
-    res.status(500).send('Internal server error');
-  }
-});
-
-// 删除文章
-router.delete('/:id', async (req, res) => {
-  const id = parseInt(req.params.id);
-  try {
-    const article = await prisma.article.delete({
+    const articleDeleted = await prisma.article.delete({
       where: {
         id: id,
-      },
+      }
     });
-    res.status(204).json(article);
+    res.status(204).json(articleDeleted);
   } catch (error) {
     console.error(error);
     res.status(500).send('Internal server error');

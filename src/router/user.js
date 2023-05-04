@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const prisma = require('../../prisma/prisma');
-const auth=require('../middleware/requireAuth');
+const auth = require('../middleware/requireAuth');
 
 
 
@@ -19,49 +19,59 @@ router.get('/all', async (req, res) => {
 // 获取指定用户
 router.get('/:id', async (req, res) => {
   const id = parseInt(req.params.id);
+  if (typeof id !== 'number')
+    return res.status(404).json({ message: 'Article not found' });
+
+  !req.query.q ? req.query.q = '' : undefined;
   try {
+    // 将请求参数中的需要的字段列表解析为数组
+    const fields = req.query.q.split(',');
+
+    const select = {
+      id: true,
+      name: true,
+      avatarUrl: fields.includes('avatarUrl'),
+      bio: fields.includes('title'),
+      updatedAt:fields.includes('updatedAt'),
+    };
     const user = await prisma.user.findUnique({
       where: {
-        id: id,
+        id
       },
-    });
+      select
+    })
+
     if (!user) {
-      return res.status(404).send(`User with ID ${id} not found`);
+      return res.status(404).json({ message: 'User not found' });
     }
-    res.status(200).json({
-        name: user.name,
-        avatarUrl: user.avatarUrl,
-        id: user.id,
-        updatedAt:user.updatedAt
-    });
+
+    res.status(200).json(user);
   } catch (error) {
-    console.error(error);
     res.status(500).send('Internal server error');
   }
 });
 
 // 更新用户
-router.put('/:id', async (req, res) => {
+router.put('/:id', auth, async (req, res) => {
   const id = parseInt(req.params.id);
-  const { name, avatarUrl,email,phone,passwordHash } = req.body;
-  if (!name && !avatarUrl && !email && !phone && !passwordHash) {
-    return res.status(400).json({ message: 'Incomplete data' });
-  }
-  
+  const { name, bio, avatarUrl, email, phone, passwordHash } = req.body;
+  if (id !== req.token.user.id)
+    return res.status(401).send('Unauthorized');
   try {
     const user = await prisma.user.update({
       where: {
         id: id,
       },
       data: {
-        name: name,
-        avatarUrl: avatarUrl,
-        email: email,
-        phone: phone,
-        passwordHash: passwordHash
+        name,
+        avatarUrl,
+        email,
+        phone,
+        bio,
+        passwordHash
       },
     });
-    res.status(200).json({ id:user.id,name, avatarUrl,email,phone,passwordHash });
+    res.status(200).json({ id: user.id, name, avatarUrl, email, phone, passwordHash });
   } catch (error) {
     console.error(error);
     res.status(500).send('Internal server error');
@@ -90,7 +100,7 @@ router.delete('/:id', async (req, res) => {
     res.status(500).send('Internal server error');
   }
 });
-router.get('/init',async(req,res)=>{
+router.get('/init', async (req, res) => {
   const newUser = await prisma.user.create({
     data: {
       "name": "Administrator",

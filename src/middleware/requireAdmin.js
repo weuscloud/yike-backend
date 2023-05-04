@@ -1,6 +1,6 @@
 // 用户认证中间件
 function requireAdmin(req, res, next) {
-  const { user } = req;
+  const { user } = req.token.user;
   if (!user) return res.status(401).send("Unauthorized"); // 非管理员用户
   
   const { id } = user;
