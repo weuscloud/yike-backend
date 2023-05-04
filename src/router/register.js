@@ -42,7 +42,7 @@ router.post('/', async (req, res) => {
           name: newUser.name,
           avatarUrl: newUser.avatarUrl,
           id: newUser.id,
-          updatedAt:user.updatedAt
+          updatedAt:newUser.updatedAt
         },
         ip:"",
         unixTimestamp: Math.floor(Date.now() / 1000)

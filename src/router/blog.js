@@ -48,9 +48,10 @@ router.get('/pop', async (req, res) => {
   try {
     const articles = await prisma.article.findMany({
       take: 5,
-      orderBy: { id: 'asc' },
+      orderBy: { views: 'desc' },
       select: {
         id: true,
+        views: true,
       },
     });
     res.status(200).json(articles);
@@ -59,6 +60,7 @@ router.get('/pop', async (req, res) => {
     res.status(500).send('Internal server error');
   }
 });
+
 //id
 router.get('/tags/:tagId', async (req, res) => {
   const { tagId } = req.params;
