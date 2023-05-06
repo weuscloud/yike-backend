@@ -55,6 +55,7 @@ app.use("/login", require("./router/login.js"));
 app.use("/users", require("./router/user.js"));
 app.use("/tags", require("./router/tag.js"));
 app.use("/blogs", require("./router/blog.js"));
+app.use('/uploads', require("./router/upload.js"));
 // 启动服务器
 app.listen(3000, () => {
   console.log("服务器已启动");
