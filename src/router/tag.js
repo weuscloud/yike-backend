@@ -7,14 +7,24 @@ router.get('/top', async (req, res) => {
   try {
     const tags = await prisma.tag.findMany({
       take: 5,
-      orderBy: { id: 'asc' },
+      include: {
+        articles: {
+          select: {
+            id: true
+          }
+        }
+      }
     });
+
+    tags.sort((a, b) => b.articles.length - a.articles.length);
+
     res.status(200).json(tags);
   } catch (error) {
     console.error(error);
     res.status(500).send('Internal server error');
   }
 });
+
 // 获取所有标签
 router.get('/all', async (req, res) => {
   try {
