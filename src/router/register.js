@@ -50,7 +50,7 @@ router.post('/', async (req, res) => {
       JWT_SECRET,
       { expiresIn: '7d' }
     );
-    // Return token to the user
+    res.set('Authorization', `Bearer ${token}`);
     return res.status(200).json({ token });
   } catch (error) {
     console.log(error);
