@@ -39,6 +39,7 @@ let requestsCount = 0;
 
 setInterval(() => {
   console.log(`\u001b[32mAverage requests per minute: ${requestsCount}\u001b[0m`)
+  if(requestsCount==0)console.clear();
   requestsCount = 0;
 }, 60000);
 // 中间件函数，记录请求地址并输出到控制台

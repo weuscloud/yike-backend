@@ -2,11 +2,11 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../../prisma/prisma');
 const auth = require('../middleware/requireAuth');
-
+const admin = require('../middleware/requireAdmin');
 
 
 // 用户列表
-router.get('/all', async (req, res) => {
+router.get('/all',admin, async (req, res) => {
   try {
     const users = await prisma.user.findMany();
     res.status(200).json(users);
@@ -52,11 +52,11 @@ router.get('/:id', async (req, res) => {
 });
 
 // 更新用户
-router.put('/:id', async (req, res) => {
+router.put('/:id',auth, async (req, res) => {
   const id = parseInt(req.params.id);
   const { name, bio, avatarUrl, email, phone, passwordHash } = req.body;
-  // if (id !== req.token.user.id)
-  //   return res.status(401).send('Unauthorized');
+  if (id !==parseInt( req.token.user.id))
+    return res.status(401).send('Unauthorized');
   try {
     const user = await prisma.user.update({
       where: {
@@ -78,7 +78,7 @@ router.put('/:id', async (req, res) => {
   }
 });
 // 删除用户
-router.delete('/:id', async (req, res) => {
+router.delete('/:id',admin, async (req, res) => {
   const id = parseInt(req.params.id);
   try {
     const user = await prisma.user.findUnique({

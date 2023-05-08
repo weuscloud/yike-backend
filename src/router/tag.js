@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const prisma = require('../../prisma/prisma');
-
+const auth = require('../middleware/requireAuth');
+const admin = require('../middleware/requireAdmin');
 //get top 5
 router.get('/top', async (req, res) => {
   try {
@@ -26,7 +27,7 @@ router.get('/top', async (req, res) => {
 });
 
 // 获取所有标签
-router.get('/all', async (req, res) => {
+router.get('/all',admin, async (req, res) => {
   try {
     const tags = await prisma.tag.findMany();
     res.json(tags);
@@ -51,7 +52,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // 创建新标签
-router.post('/:time', async (req, res) => {
+router.post('/:time',admin, async (req, res) => {
   const { tagName } = req.body;
   if (!tagName) {
     return res.status(401).json({ message: 'Incorrect tag' });
@@ -66,7 +67,7 @@ router.post('/:time', async (req, res) => {
 });
 
 // 更新标签
-router.put('/:id', async (req, res) => {
+router.put('/:id',admin, async (req, res) => {
   const { id } = req.params;
   const { tagName } = req.body;
   if (!tagName) {
@@ -85,7 +86,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // 删除所有标签
-router.delete('/all', async (req, res) => {
+router.delete('/all',admin, async (req, res) => {
   try {
     await prisma.tag.deleteMany();
     res.json({ message: '删除成功' });
@@ -95,7 +96,7 @@ router.delete('/all', async (req, res) => {
   }
 });
 // 删除标签
-router.delete('/:id', async (req, res) => {
+router.delete('/:id',admin, async (req, res) => {
   try {
     const { id } = req.params;
     const tag = await prisma.tag.findUnique({ where: { id: parseInt(id) } });

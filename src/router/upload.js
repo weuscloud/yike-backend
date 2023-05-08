@@ -27,7 +27,7 @@ router.post('/image', upload.single('image'), (req, res) => {
   }
 
   // 构造图片的访问路径
-  const imageUrl = `${req.protocol}://${req.hostname}:${req.protocol === 'http' ? 80 : 443}/api/uploads/${fileName}`;
+  const imageUrl = `/api/uploads/${fileName}`;
   // 返回图片的访问路径
   res.json({ success: true, data: imageUrl });
 });

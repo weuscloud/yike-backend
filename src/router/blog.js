@@ -2,8 +2,27 @@ const express = require('express');
 const router = express.Router();
 const prisma = require('../../prisma/prisma');
 const auth = require('../middleware/requireAuth');
+const admin = require('../middleware/requireAdmin');
+// GET /articles/:id/author
+router.get('/:id/author', async (req, res) => {
+  const articleId = parseInt(req.params.id)
+  try {
+    const article = await prisma.article.findUnique({
+      where: { id: articleId },
+      select: { authorId: true }
+    })
 
-//get all articles 
+    if (!article) {
+      return res.status(404).send('Article not found')
+    }
+
+    const authorId = article.authorId
+    res.json({ id:authorId })
+  } catch (error) {
+    res.status(500).send('Server error')
+  }
+})
+//get all articles by user
 router.get('/', auth, async (req, res) => {
   const userId = parseInt(req.token.user.id);
 
@@ -26,7 +45,7 @@ router.get('/', auth, async (req, res) => {
   }
 })
 // 获取文章列表
-router.get('/all', async (req, res) => {
+router.get('/all',admin, async (req, res) => {
   try {
     const articles = await prisma.article.findMany({
       include: {
@@ -47,7 +66,7 @@ router.get('/all', async (req, res) => {
 router.get('/pop', async (req, res) => {
   try {
     const articles = await prisma.article.findMany({
-      take: 5,
+      take: 10,
       orderBy: { views: 'desc' },
       select: {
         id: true,
@@ -61,7 +80,7 @@ router.get('/pop', async (req, res) => {
   }
 });
 
-//id
+//get articles by tag id
 router.get('/tags/:tagId', async (req, res) => {
   const { tagId } = req.params;
 

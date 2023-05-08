@@ -1,14 +1,26 @@
-// 用户认证中间件
-function requireAdmin(req, res, next) {
-  const { user } = req.token.user;
-  if (!user) return res.status(401).send("Unauthorized"); // 非管理员用户
-  
-  const { id } = user;
-  if (id !== 1) {
-    return res.status(401).send("Unauthorized"); // 非管理员用户
+const jwt = require("jsonwebtoken");
+
+// 拦截未登录请求的中间件
+function requireAuth(req, res, next) {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+
+  if (token == null) {
+    return res.sendStatus(401); // 未提供 token
   }
 
-  next(); // 通过认证，继续执行路由处理程序
+  jwt.verify(token, process.env.JWT_SECRET, (err, token) => {
+    if (err) {
+      return res.sendStatus(403); // token 不合法或已过期
+    }
+
+    req.token = token;
+    if (parseInt(token.user.id) === 1) {
+      next(); // 通过认证，继续执行路由处理程序
+    } else {
+      return res.sendStatus(401); // 未提供 token
+    }
+  });
 }
 
-module.exports = requireAdmin;
+module.exports = requireAuth;
